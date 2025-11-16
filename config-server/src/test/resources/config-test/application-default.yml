@@ -1,0 +1,13 @@
+# Test configuration
+test:
+  property: test-value
+
+eureka:
+  client:
+    enabled: false
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health

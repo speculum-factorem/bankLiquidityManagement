@@ -1,0 +1,305 @@
+plugins {
+    id 'java'
+    id 'org.springframework.boot' version '3.2.0'
+    id 'io.spring.dependency-management' version '1.1.4'
+    id 'com.palantir.docker' version '0.35.0'
+    id 'com.github.ben-manes.versions' version '0.50.0'
+    id 'checkstyle'
+    id 'pmd'
+    id 'jacoco'
+}
+
+allprojects {
+    group = 'com.bank'
+    version = '1.0.0'
+
+    repositories {
+        mavenCentral()
+        maven { url 'https://repo.spring.io/milestone' }
+    }
+}
+
+subprojects {
+    apply plugin: 'java'
+    apply plugin: 'org.springframework.boot'
+    apply plugin: 'io.spring.dependency-management'
+    apply plugin: 'checkstyle'
+    apply plugin: 'pmd'
+    apply plugin: 'jacoco'
+
+    sourceCompatibility = '17'
+    targetCompatibility = '17'
+
+    configurations {
+        compileOnly {
+            extendsFrom annotationProcessor
+        }
+    }
+
+    dependencies {
+        // Common dependencies for all subprojects
+        compileOnly 'org.projectlombok:lombok'
+        annotationProcessor 'org.projectlombok:lombok'
+
+        testImplementation 'org.springframework.boot:spring-boot-starter-test'
+        testImplementation 'org.junit.jupiter:junit-jupiter-api'
+        testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine'
+    }
+
+    // Test configuration
+    test {
+        useJUnitPlatform()
+        testLogging {
+            events "passed", "skipped", "failed"
+            exceptionFormat "full"
+        }
+        finalizedBy jacocoTestReport
+    }
+
+    // JaCoCo configuration
+    jacoco {
+        toolVersion = "0.8.10"
+    }
+
+    jacocoTestReport {
+        dependsOn test
+        reports {
+            xml.required = true
+            html.required = true
+            csv.required = false
+        }
+
+        executionData fileTree(project.rootDir.absolutePath).include("**/build/jacoco/*.exec")
+
+        afterEvaluate {
+            classDirectories.setFrom(files(classDirectories.files.collect {
+                fileTree(dir: it, exclude: [
+                        '**/config/**',
+                        '**/dto/**',
+                        '**/model/**',
+                        '**/*Application.class',
+                        '**/exception/**'
+                ])
+            }))
+        }
+    }
+
+    jacocoTestCoverageVerification {
+        violationRules {
+            rule {
+                limit {
+                    minimum = 0.8 // 80% coverage
+                }
+            }
+        }
+    }
+
+    // Checkstyle configuration
+    checkstyle {
+        toolVersion = '10.12.1'
+        configFile = file("${rootProject.projectDir}/gradle/config/checkstyle.xml")
+        ignoreFailures = false
+        showViolations = true
+    }
+
+    tasks.withType(Checkstyle) {
+        reports {
+            xml.required = true
+            html.required = true
+        }
+    }
+
+    // PMD configuration
+    pmd {
+        toolVersion = '6.55.0'
+        ruleSetFiles = files("${rootProject.projectDir}/gradle/config/pmd-ruleset.xml")
+        ruleSets = []
+        ignoreFailures = false
+    }
+
+    tasks.withType(Pmd) {
+        reports {
+            xml.required = true
+            html.required = true
+        }
+    }
+
+    // Java compilation encoding
+    tasks.withType(JavaCompile) {
+        options.encoding = 'UTF-8'
+    }
+
+    // BootJar configuration
+    bootJar {
+        archiveFileName = "${project.name}.jar"
+    }
+}
+
+// Project-specific dependencies
+project(':service-discovery') {
+    dependencies {
+        implementation 'org.springframework.cloud:spring-cloud-starter-netflix-eureka-server'
+        implementation 'org.springframework.boot:spring-boot-starter-security'
+        implementation 'org.springframework.boot:spring-boot-starter-actuator'
+        implementation 'io.micrometer:micrometer-registry-prometheus'
+    }
+}
+
+project(':config-server') {
+    dependencies {
+        implementation 'org.springframework.cloud:spring-cloud-config-server'
+        implementation 'org.springframework.boot:spring-boot-starter-actuator'
+        implementation 'org.springframework.cloud:spring-cloud-starter-netflix-eureka-client'
+        implementation 'io.micrometer:micrometer-registry-prometheus'
+    }
+}
+
+project(':api-gateway') {
+    dependencies {
+        implementation 'org.springframework.cloud:spring-cloud-starter-gateway'
+        implementation 'org.springframework.cloud:spring-cloud-starter-netflix-eureka-client'
+        implementation 'org.springframework.boot:spring-boot-starter-actuator'
+        implementation 'io.micrometer:micrometer-registry-prometheus'
+        implementation 'com.github.vladimir-bukhtoyarov:bucket4j-core:7.6.0'
+    }
+}
+
+project(':liquidity-service') {
+    dependencies {
+        implementation 'org.springframework.boot:spring-boot-starter-web'
+        implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+        implementation 'org.springframework.boot:spring-boot-starter-validation'
+        implementation 'org.springframework.boot:spring-boot-starter-actuator'
+        implementation 'org.springframework.cloud:spring-cloud-starter-netflix-eureka-client'
+        implementation 'org.springframework.cloud:spring-cloud-starter-config'
+        implementation 'org.postgresql:postgresql'
+        implementation 'io.micrometer:micrometer-registry-prometheus'
+    }
+}
+
+project(':transaction-service') {
+    dependencies {
+        implementation 'org.springframework.boot:spring-boot-starter-web'
+        implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+        implementation 'org.springframework.boot:spring-boot-starter-validation'
+        implementation 'org.springframework.boot:spring-boot-starter-actuator'
+        implementation 'org.springframework.kafka:spring-kafka'
+        implementation 'org.springframework.cloud:spring-cloud-starter-netflix-eureka-client'
+        implementation 'org.springframework.cloud:spring-cloud-starter-config'
+        implementation 'org.postgresql:postgresql'
+        implementation 'io.micrometer:micrometer-registry-prometheus'
+    }
+}
+
+project(':risk-service') {
+    dependencies {
+        implementation 'org.springframework.boot:spring-boot-starter-web'
+        implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+        implementation 'org.springframework.boot:spring-boot-starter-validation'
+        implementation 'org.springframework.boot:spring-boot-starter-actuator'
+        implementation 'org.springframework.cloud:spring-cloud-starter-netflix-eureka-client'
+        implementation 'org.springframework.cloud:spring-cloud-starter-config'
+        implementation 'org.postgresql:postgresql'
+        implementation 'io.micrometer:micrometer-registry-prometheus'
+    }
+}
+
+// Dependency Management
+dependencyManagement {
+    imports {
+        mavenBom "org.springframework.cloud:spring-cloud-dependencies:2023.0.0"
+    }
+}
+
+// Custom tasks
+
+// Task to build all services
+task buildAll {
+    group = 'Build'
+    description = 'Builds all services'
+
+    dependsOn subprojects.collect { it.tasks.named('build') }
+}
+
+// Task to test all services
+task testAll {
+    group = 'Verification'
+    description = 'Runs tests for all services'
+
+    dependsOn subprojects.collect { it.tasks.named('test') }
+}
+
+// Task to check code quality for all services
+task checkAll {
+    group = 'Verification'
+    description = 'Runs all checks for all services'
+
+    dependsOn subprojects.collect { it.tasks.named('check') }
+}
+
+// Task to generate coverage report for all services
+task coverageReport {
+    group = 'Verification'
+    description = 'Generates combined coverage report for all services'
+
+    dependsOn subprojects.collect { it.tasks.named('jacocoTestReport') }
+
+    doLast {
+        println "Coverage reports generated for all services"
+        println "HTML reports available in each service's build/reports/jacoco/test/html directory"
+    }
+}
+
+// Task to run all services (for development)
+task runAll {
+    group = 'Application'
+    description = 'Starts all services (run each service in separate terminal)'
+
+    doLast {
+        println """
+        To run all services, execute the following commands in separate terminals:
+        
+        Terminal 1: ./gradlew :config-server:bootRun
+        Terminal 2: ./gradlew :service-discovery:bootRun
+        Terminal 3: ./gradlew :api-gateway:bootRun
+        Terminal 4: ./gradlew :liquidity-service:bootRun
+        Terminal 5: ./gradlew :transaction-service:bootRun
+        Terminal 6: ./gradlew :risk-service:bootRun
+        
+        Or use Docker Compose: docker-compose up -d
+        """
+    }
+}
+
+// Task to clean all projects
+task cleanAll {
+    group = 'Build'
+    description = 'Cleans all projects'
+
+    dependsOn subprojects.collect { it.tasks.named('clean') }
+}
+
+// Docker tasks
+task buildDockerImages {
+    group = 'Docker'
+    description = 'Builds Docker images for all services'
+
+    dependsOn subprojects.collect { it.tasks.named('bootJar') }
+
+    doLast {
+        println "Docker images can be built using: docker-compose build"
+    }
+}
+
+// Dependency updates task
+task dependencyUpdates {
+    group = 'Help'
+    description = 'Displays dependency updates'
+
+    doLast {
+        println "Run './gradlew dependencyUpdates' to check for dependency updates"
+    }
+}
+
+// Default task
+defaultTasks 'buildAll'

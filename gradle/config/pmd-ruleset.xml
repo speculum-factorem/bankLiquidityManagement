@@ -1,0 +1,104 @@
+<?xml version="1.0"?>
+<ruleset name="Bank Liquidity Management Rules"
+         xmlns="http://pmd.sourceforge.net/ruleset/2.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://pmd.sourceforge.net/ruleset/2.0.0
+                             https://pmd.sourceforge.io/ruleset_2_0_0.xsd">
+
+    <description>PMD Rules for Bank Liquidity Management Project</description>
+
+    <!-- Best Practices -->
+    <rule ref="category/java/bestpractices.xml">
+        <exclude name="AbstractClassWithoutAbstractMethod"/>
+        <exclude name="AccessorClassGeneration"/>
+        <exclude name="AccessorMethodGeneration"/>
+        <exclude name="ConstantsInInterface"/>
+    </rule>
+
+    <!-- Code Style -->
+    <rule ref="category/java/codestyle.xml">
+        <exclude name="AtLeastOneConstructor"/>
+        <exclude name="CallSuperInConstructor"/>
+        <exclude name="CommentDefaultAccessModifier"/>
+        <exclude name="ConfusingTernary"/>
+    </rule>
+
+    <!-- Design -->
+    <rule ref="category/java/design.xml">
+        <exclude name="LawOfDemeter"/>
+        <exclude name="DataClass"/>
+        <exclude name="TooManyFields">
+        <properties>
+            <property name="maxfields" value="15"/>
+        </properties>
+    </rule>
+    <rule ref="category/java/design.xml/TooManyMethods">
+        <properties>
+            <property name="maxmethods" value="20"/>
+        </properties>
+    </rule>
+</rule>
+
+        <!-- Documentation -->
+<rule ref="category/java/documentation.xml">
+<exclude name="CommentRequired"/>
+<exclude name="CommentSize"/>
+</rule>
+
+        <!-- Error Prone -->
+<rule ref="category/java/errorprone.xml">
+<exclude name="BeanMembersShouldSerialize"/>
+<exclude name="DataflowAnomalyAnalysis"/>
+</rule>
+
+        <!-- Multithreading -->
+<rule ref="category/java/multithreading.xml">
+<exclude name="AvoidSynchronizedAtMethodLevel"/>
+<exclude name="DoNotUseThreads"/>
+</rule>
+
+        <!-- Performance -->
+<rule ref="category/java/performance.xml">
+<exclude name="AvoidInstantiatingObjectsInLoops"/>
+<exclude name="ConsecutiveAppendsShouldReuse"/>
+</rule>
+
+        <!-- Security -->
+<rule ref="category/java/security.xml"/>
+
+        <!-- Custom Rules -->
+<rule name="AvoidPrintStackTrace"
+      language="java"
+      message="Avoid using printStackTrace(); use a logger instead"
+      class="net.sourceforge.pmd.lang.rule.XPathRule">
+<description>
+    Avoid using printStackTrace(); use a logger instead.
+</description>
+<priority>3</priority>
+<properties>
+    <property name="xpath">
+        <value>
+            <![CDATA[
+                    //PrimaryExpression[
+                        PrimaryPrefix/Name[ends-with(@Image, 'printStackTrace')]
+                    ]
+                    ]]>
+        </value>
+    </property>
+</properties>
+<example>
+    <![CDATA[
+            public class Foo {
+                void bar() {
+                    try {
+                        // ...
+                    } catch (Exception e) {
+                        e.printStackTrace(); // Avoid this
+                    }
+                }
+            }
+            ]]>
+</example>
+</rule>
+
+        </ruleset>

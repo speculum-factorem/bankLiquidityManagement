@@ -1,0 +1,58 @@
+rootProject.name = 'bank-liquidity-management'
+
+include 'service-discovery'
+include 'config-server'
+include 'api-gateway'
+include 'liquidity-service'
+include 'transaction-service'
+include 'risk-service'
+
+// Configure subproject names and paths
+project(':service-discovery').projectDir = file('service-discovery')
+project(':config-server').projectDir = file('config-server')
+project(':api-gateway').projectDir = file('api-gateway')
+project(':liquidity-service').projectDir = file('liquidity-service')
+project(':transaction-service').projectDir = file('transaction-service')
+project(':risk-service').projectDir = file('risk-service')
+
+// Enable feature previews for better Gradle performance
+enableFeaturePreview('TYPESAFE_PROJECT_ACCESSORS')
+
+// Configure build cache
+buildCache {
+    local {
+        enabled = true
+        directory = new File(rootDir, 'build-cache')
+    }
+}
+
+// Project properties
+gradle.ext {
+    // Spring Boot version
+    springBootVersion = '3.2.0'
+
+    // Spring Cloud version
+    springCloudVersion = '2023.0.0'
+
+    // Java version
+    javaVersion = '17'
+
+    // Default encoding
+    encoding = 'UTF-8'
+}
+
+// Print project information
+println """
+===========================================
+Bank Liquidity Management System
+===========================================
+Root Project: ${rootProject.name}
+Version: ${rootProject.version}
+Java Version: ${gradle.ext.javaVersion}
+Spring Boot: ${gradle.ext.springBootVersion}
+Spring Cloud: ${gradle.ext.springCloudVersion}
+
+Included Projects:
+${subprojects.collect { "  - ${it.name} (${it.projectDir})" }.join('\n')}
+===========================================
+"""

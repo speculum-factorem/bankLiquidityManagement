@@ -1,0 +1,134 @@
+// Конфигурация Docker для проекта
+
+apply plugin: 'com.palantir.docker'
+apply plugin: 'com.palantir.docker-run'
+
+buildscript {
+    repositories {
+        mavenCentral()
+    }
+    dependencies {
+        classpath 'com.palantir.gradle.docker:gradle-docker:0.35.0'
+    }
+}
+
+// Базовая конфигурация Docker для всех сервисов
+subprojects { project ->
+    if (project.name.endsWith('-service') || project.name == 'api-gateway' ||
+            project.name == 'config-server' || project.name == 'service-discovery') {
+
+        apply plugin: 'com.palantir.docker'
+
+        docker {
+            name "bank-liquidity/${project.name}:${project.version}"
+            dockerfile file('Dockerfile')
+            files project.bootJar.outputs.files
+            buildArgs(['JAR_FILE': project.bootJar.archiveFileName.get()])
+            pull true
+            noCache true
+        }
+
+        // Задача для сборки Docker образа
+        task buildDockerImage {
+            group = 'Docker'
+            description = "Builds Docker image for ${project.name}"
+
+            dependsOn project.tasks.named('build'), project.tasks.named('docker')
+        }
+
+        // Задача для запуска Docker контейнера
+        task runDockerContainer(type: Exec) {
+            group = 'Docker'
+            description = "Runs Docker container for ${project.name}"
+
+            commandLine 'docker', 'run', '-d',
+                    '--name', "${project.name}",
+                    '-p', getServicePort(project.name),
+                    "bank-liquidity/${project.name}:${project.version}"
+
+            doFirst {
+                println "Starting Docker container for ${project.name} on port ${getServicePort(project.name)}"
+            }
+        }
+    }
+}
+
+// Функция для получения порта сервиса
+def getServicePort(String serviceName) {
+    switch (serviceName) {
+        case 'api-gateway':
+            return '8080:8080'
+        case 'config-server':
+            return '8888:8888'
+        case 'service-discovery':
+            return '8761:8761'
+        case 'liquidity-service':
+            return '8081:8081'
+        case 'transaction-service':
+            return '8082:8082'
+        case 'risk-service':
+            return '8083:8083'
+        default:
+            return '8080:8080'
+    }
+}
+
+// Задача для сборки всех Docker образов
+task buildAllDockerImages {
+    group = 'Docker'
+    description = 'Builds Docker images for all services'
+
+    dependsOn subprojects.findAll {
+        it.name.endsWith('-service') || it.name == 'api-gateway' ||
+                it.name == 'config-server' || it.name == 'service-discovery'
+    }.collect { it.tasks.named('buildDockerImage') }
+}
+
+// Задача для запуска всех сервисов в Docker
+task runAllDockerContainers {
+    group = 'Docker'
+    description = 'Runs all services in Docker containers'
+
+    dependsOn subprojects.findAll {
+        it.name.endsWith('-service') || it.name == 'api-gateway' ||
+                it.name == 'config-server' || it.name == 'service-discovery'
+    }.collect { it.tasks.named('runDockerContainer') }
+}
+
+// Задача для остановки всех Docker контейнеров
+task stopAllDockerContainers(type: Exec) {
+    group = 'Docker'
+    description = 'Stops all Docker containers for the project'
+
+    commandLine 'docker', 'stop',
+            'api-gateway', 'config-server', 'service-discovery',
+            'liquidity-service', 'transaction-service', 'risk-service'
+
+    doFirst {
+        println 'Stopping all Docker containers...'
+    }
+
+    doLast {
+        println 'All Docker containers stopped'
+    }
+}
+
+// Задача для очистки Docker контейнеров и образов
+task cleanDocker(type: Exec) {
+    group = 'Docker'
+    description = 'Cleans all Docker containers and images for the project'
+
+    commandLine 'bash', '-c', '''
+        docker stop $(docker ps -q --filter "name=bank-liquidity") 2>/dev/null || true
+        docker rm $(docker ps -aq --filter "name=bank-liquidity") 2>/dev/null || true
+        docker rmi $(docker images "bank-liquidity/*" -q) 2>/dev/null || true
+    '''
+
+    doFirst {
+        println 'Cleaning Docker containers and images...'
+    }
+
+    doLast {
+        println 'Docker cleanup completed'
+    }
+}

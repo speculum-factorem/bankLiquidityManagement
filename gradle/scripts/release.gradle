@@ -1,0 +1,92 @@
+// Конфигурация релиза проекта
+
+// Плагин для управления версиями
+plugins {
+    id 'net.researchgate.release' version '3.0.2'
+}
+
+// Конфигурация плагина release
+release {
+    failOnCommitNeeded = true
+    failOnPublishNeeded = true
+    failOnSnapshotDependencies = true
+    failOnUnversionedFiles = true
+    failOnUpdateNeeded = true
+    revertOnFail = true
+
+    versionPropertyFile = 'gradle.properties'
+    versionProperties = ['version']
+
+    scmAdapters = [
+            net.researchgate.release.GitAdapter
+    ]
+
+    git {
+        requireBranch = 'main'
+        pushToRemote = 'origin'
+        pushToBranchPrefix = ''
+        commitVersionFileOnly = false
+        signTag = false
+    }
+}
+
+// Задача для подготовки релиза
+task prepareRelease {
+    group = 'Release'
+    description = 'Prepares the project for release'
+
+    dependsOn clean, build, test, qualityCheck
+
+    doLast {
+        println "Project is ready for release"
+        println "Current version: ${project.version}"
+    }
+}
+
+// Задача для создания дистрибутива
+task createDistributable(type: Zip) {
+    group = 'Release'
+    description = 'Creates a distributable package'
+
+    from('.') {
+        include 'build/libs/*.jar'
+        include 'Dockerfile'
+        include 'docker-compose.yml'
+        include 'README.md'
+        include 'docs/**'
+    }
+
+    archiveFileName = "bank-liquidity-management-${project.version}.zip"
+    destinationDirectory = file("build/distributions")
+
+    doLast {
+        println "Distributable created: ${archiveFileName}"
+    }
+}
+
+// Задача для публикации артефактов
+task publishArtifacts {
+    group = 'Release'
+    description = 'Publishes all artifacts'
+
+    dependsOn subprojects*.publish
+
+    doLast {
+        println "All artifacts published for version: ${project.version}"
+    }
+}
+
+// Задача для полного цикла релиза
+task fullRelease {
+    group = 'Release'
+    description = 'Performs full release cycle'
+
+    dependsOn prepareRelease, createDistributable, publishArtifacts
+
+    doLast {
+        println "Full release completed for version: ${project.version}"
+    }
+}
+
+// После релиза увеличиваем версию для разработки
+afterReleaseBuild.dependsOn createDistributable

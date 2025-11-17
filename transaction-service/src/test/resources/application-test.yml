@@ -1,0 +1,43 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    username: sa
+    password:
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+  kafka:
+    bootstrap-servers: ${spring.embedded.kafka.brokers:localhost:9092}
+  h2:
+    console:
+      enabled: false
+
+eureka:
+  client:
+    enabled: false
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      enabled: true
+
+logging:
+  level:
+    com.bank.transaction: DEBUG
+    org.hibernate.SQL: false
+    org.springframework.kafka: WARN
+
+transaction:
+  alerts:
+    high-value-threshold: 10000
+    suspicious-threshold: 50000
+    failed-attempts-threshold: 3
+    failed-attempts-window-hours: 1

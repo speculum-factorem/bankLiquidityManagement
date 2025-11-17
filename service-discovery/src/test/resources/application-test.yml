@@ -1,0 +1,29 @@
+spring:
+  security:
+    user:
+      name: test
+      password: test
+  main:
+    allow-bean-definition-overriding: true
+
+eureka:
+  server:
+    enable-self-preservation: false
+  client:
+    register-with-eureka: false
+    fetch-registry: false
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      enabled: true
+
+logging:
+  level:
+    com.bank.discovery: INFO
+    com.netflix.eureka: WARN
+    org.springframework.security: WARN

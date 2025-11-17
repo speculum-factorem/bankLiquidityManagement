@@ -1,0 +1,84 @@
+// Конфигурация для настройки сборки проекта
+
+// Плагин для управления версиями
+plugins {
+    id 'com.github.ben-manes.versions' version '0.50.0'
+}
+
+// Конфигурация для проверки обновлений зависимостей
+dependencyUpdates {
+    checkForGradleUpdate = true
+    outputDir = "build/dependencyUpdates"
+    reportfileName = "report"
+
+    // Игнорировать альфа, бета и RC версии
+    rejectVersionIf {
+        isNonStable(candidate.version)
+    }
+}
+
+static boolean isNonStable(String version) {
+    def stableKeyword = ['RELEASE', 'FINAL', 'GA'].any { it -> version.toUpperCase().contains(it) }
+    def regex = /^[0-9,.v-]+(-r)?$/
+    return !stableKeyword && !(version ==~ regex)
+}
+
+// Задача для проверки качества кода
+task codeQualityCheck {
+    group = 'Verification'
+    description = 'Runs all code quality checks'
+
+    dependsOn tasks.named('test'), tasks.named('check')
+}
+
+// Задача для создания отчета о зависимостях
+task dependencyReport {
+    group = 'Help'
+    description = 'Generates a dependency report'
+
+    doLast {
+        def outputFile = file("build/reports/dependencies.txt")
+        outputFile.parentFile.mkdirs()
+
+        outputFile.text = "Project Dependencies Report\n"
+        outputFile << "Generated: ${new Date()}\n\n"
+
+        allprojects { project ->
+            outputFile << "Project: ${project.name}\n"
+            project.configurations.each { configuration ->
+                if (configuration.canBeResolved) {
+                    outputFile << "  Configuration: ${configuration.name}\n"
+                    configuration.resolvedConfiguration.resolvedArtifacts.each { artifact ->
+                        outputFile << "    - ${artifact.moduleVersion.id}\n"
+                    }
+                }
+            }
+            outputFile << "\n"
+        }
+
+        println "Dependency report generated: ${outputFile.absolutePath}"
+    }
+}
+
+// Конфигурация для всех проектов
+allprojects {
+    // Настройка кодировки
+    tasks.withType(JavaCompile) {
+        options.encoding = 'UTF-8'
+    }
+
+    // Настройка тестов
+    tasks.withType(Test) {
+        useJUnitPlatform()
+        testLogging {
+            events "passed", "skipped", "failed"
+            exceptionFormat "full"
+        }
+    }
+
+    // Настройка JavaDoc
+    tasks.withType(Javadoc) {
+        options.encoding = 'UTF-8'
+        options.addBooleanOption('Xdoclint:none', true)
+    }
+}

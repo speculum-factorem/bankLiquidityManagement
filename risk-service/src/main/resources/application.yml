@@ -1,0 +1,133 @@
+server:
+  port: 8083
+  servlet:
+    context-path: /risk-service
+
+spring:
+  application:
+    name: risk-service
+  datasource:
+    url: jdbc:postgresql://localhost:5432/bank_liquidity
+    username: postgres
+    password: password
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 2
+      connection-timeout: 30000
+      idle-timeout: 300000
+      max-lifetime: 1200000
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+        jdbc:
+          batch_size: 20
+        order_inserts: true
+        order_updates: true
+    open-in-view: false
+  cloud:
+    config:
+      enabled: true
+      uri: http://localhost:8888
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
+    register-with-eureka: true
+    fetch-registry: true
+  instance:
+    prefer-ip-address: true
+    instance-id: ${spring.application.name}:${server.port}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus,env
+  endpoint:
+    health:
+      show-details: always
+      show-components: always
+    metrics:
+      enabled: true
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
+    tags:
+      application: ${spring.application.name}
+      environment: ${spring.profiles.active:default}
+
+logging:
+  level:
+    com.bank.risk: DEBUG
+    org.hibernate.SQL: WARN
+    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
+  pattern:
+    level: "%5p [%X{correlationId:-}]"
+  file:
+    name: logs/risk-service.log
+
+risk:
+  thresholds:
+    low-risk-max: 25
+    medium-risk-max: 50
+    high-risk-max: 75
+    critical-risk-min: 75
+    liquidity-ratio-critical: 0.5
+    liquidity-ratio-high: 1.0
+    liquidity-ratio-medium: 1.5
+  weights:
+    liquidity-weight: 0.4
+    volatility-weight: 0.3
+    concentration-weight: 0.2
+    market-weight: 0.1
+  alerting:
+    enabled: true
+    high-severity-threshold: 7
+    critical-severity-threshold: 9
+    notification-email: risk-team@bank.com
+
+---
+spring:
+  config:
+    activate:
+      on-profile: test
+  datasource:
+    url: jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    username: sa
+    password:
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: true
+  h2:
+    console:
+      enabled: true
+
+eureka:
+  client:
+    enabled: false
+
+---
+spring:
+  config:
+    activate:
+      on-profile: docker
+  datasource:
+    url: jdbc:postgresql://postgres:5432/bank_liquidity
+    username: postgres
+    password: password
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://service-discovery:8761/eureka/

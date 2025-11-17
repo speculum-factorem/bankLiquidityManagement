@@ -1,0 +1,117 @@
+// Управление зависимостями проекта
+
+ext {
+    // Версии Spring
+    springBootVersion = '3.2.0'
+    springCloudVersion = '2023.0.0'
+
+    // Версии базовых зависимостей
+    lombokVersion = '1.18.30'
+    micrometerVersion = '1.12.0'
+    logbackVersion = '1.4.14'
+
+    // Версии тестирования
+    junitVersion = '5.10.1'
+    mockitoVersion = '5.7.0'
+    testContainersVersion = '1.19.3'
+
+    // Версии баз данных
+    postgresqlVersion = '42.6.0'
+    h2Version = '2.2.224'
+
+    // Версии инструментов
+    bucket4jVersion = '7.6.0'
+    logstashLogbackEncoderVersion = '7.4'
+
+    // Общие зависимости
+    commonDependencies = [
+            // Spring Boot
+            "org.springframework.boot:spring-boot-starter-web",
+            "org.springframework.boot:spring-boot-starter-actuator",
+            "org.springframework.boot:spring-boot-starter-validation",
+
+            // Lombok
+            "org.projectlombok:lombok:${lombokVersion}",
+
+            // Тестирование
+            "org.springframework.boot:spring-boot-starter-test",
+            "org.junit.jupiter:junit-jupiter-api:${junitVersion}",
+            "org.junit.jupiter:junit-jupiter-engine:${junitVersion}",
+            "org.mockito:mockito-core:${mockitoVersion}",
+            "org.mockito:mockito-junit-jupiter:${mockitoVersion}"
+    ]
+
+    // Зависимости Spring Cloud
+    springCloudDependencies = [
+            "org.springframework.cloud:spring-cloud-starter-config",
+            "org.springframework.cloud:spring-cloud-starter-netflix-eureka-client",
+            "org.springframework.cloud:spring-cloud-starter-bootstrap"
+    ]
+
+    // Зависимости для мониторинга
+    monitoringDependencies = [
+            "io.micrometer:micrometer-registry-prometheus:${micrometerVersion}",
+            "net.logstash.logback:logstash-logback-encoder:${logstashLogbackEncoderVersion}"
+    ]
+
+    // Зависимости для баз данных
+    databaseDependencies = [
+            "org.springframework.boot:spring-boot-starter-data-jpa",
+            "org.postgresql:postgresql:${postgresqlVersion}",
+            "com.h2database:h2:${h2Version}"
+    ]
+}
+
+// Конфигурация dependency management для всех проектов
+subprojects {
+    dependencyManagement {
+        imports {
+            mavenBom "org.springframework.boot:spring-boot-dependencies:${springBootVersion}"
+            mavenBom "org.springframework.cloud:spring-cloud-dependencies:${springCloudVersion}"
+        }
+    }
+
+    // Общая конфигурация для всех проектов
+    dependencies {
+        annotationProcessor "org.projectlombok:lombok:${lombokVersion}"
+        testAnnotationProcessor "org.projectlombok:lombok:${lombokVersion}"
+
+        // Общие тестовые зависимости
+        testImplementation "org.springframework.boot:spring-boot-starter-test"
+        testImplementation "org.junit.jupiter:junit-jupiter-api:${junitVersion}"
+        testRuntimeOnly "org.junit.jupiter:junit-jupiter-engine:${junitVersion}"
+        testImplementation "org.mockito:mockito-core:${mockitoVersion}"
+        testImplementation "org.mockito:mockito-junit-jupiter:${mockitoVersion}"
+    }
+}
+
+// Задача для отображения дерева зависимостей
+task allDependencies {
+    group = 'Help'
+    description = 'Displays all dependencies for all projects'
+
+    doLast {
+        allprojects { project ->
+            println "\n${project.name}:"
+            project.configurations.each { configuration ->
+                if (configuration.canBeResolved) {
+                    println "  ${configuration.name}:"
+                    configuration.resolvedConfiguration.resolvedArtifacts.each { artifact ->
+                        println "    - ${artifact.moduleVersion.id}"
+                    }
+                }
+            }
+        }
+    }
+}
+
+// Задача для проверки уязвимостей в зависимостях
+task dependencyCheck {
+    group = 'Verification'
+    description = 'Checks for vulnerabilities in dependencies'
+
+    doLast {
+        println "Dependency vulnerability check would be implemented here"
+        println "Consider using OWASP Dependency-Check plugin"
+    }
+}

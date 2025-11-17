@@ -1,0 +1,104 @@
+// Конфигурация качества кода
+
+apply plugin: 'checkstyle'
+apply plugin: 'pmd'
+apply plugin: 'jacoco'
+
+// Конфигурация Checkstyle
+checkstyle {
+    toolVersion = '10.12.1'
+    configFile = file("${rootProject.projectDir}/gradle/config/checkstyle.xml")
+    configProperties = [
+            'checkstyle.cache.file': "${buildDir}/checkstyle.cache"
+    ]
+    ignoreFailures = false
+    showViolations = true
+}
+
+tasks.withType(Checkstyle) {
+    reports {
+        xml.required = true
+        html.required = true
+    }
+}
+
+// Конфигурация PMD
+pmd {
+    toolVersion = '6.55.0'
+    ruleSetFiles = files("${rootProject.projectDir}/gradle/config/pmd-ruleset.xml")
+    ruleSets = []
+    ignoreFailures = false
+}
+
+tasks.withType(Pmd) {
+    reports {
+        xml.required = true
+        html.required = true
+    }
+}
+
+// Конфигурация JaCoCo для покрытия кода
+jacoco {
+    toolVersion = "0.8.10"
+}
+
+jacocoTestReport {
+    reports {
+        xml.required = true
+        html.required = true
+        csv.required = false
+    }
+
+    executionData fileTree(project.rootDir.absolutePath).include("**/build/jacoco/*.exec")
+
+    afterEvaluate {
+        classDirectories.setFrom(files(classDirectories.files.collect {
+            fileTree(dir: it, exclude: [
+                    '**/config/**',
+                    '**/dto/**',
+                    '**/entity/**',
+                    '**/model/**',
+                    '**/*Application.class',
+                    '**/exception/**'
+            ])
+        }))
+    }
+}
+
+jacocoTestCoverageVerification {
+    violationRules {
+        rule {
+            limit {
+                minimum = 0.8 // 80% покрытие кода
+            }
+        }
+
+        rule {
+            element = 'CLASS'
+            excludes = [
+                    '*.config.*',
+                    '*.dto.*',
+                    '*.entity.*',
+                    '*.model.*',
+                    '*.*Application'
+            ]
+            limit {
+                counter = 'LINE'
+                value = 'COVEREDRATIO'
+                minimum = 0.7
+            }
+        }
+    }
+}
+
+// Задача для проверки качества кода
+task qualityCheck {
+    group = 'Verification'
+    description = 'Runs all code quality checks'
+
+    dependsOn checkstyleMain, checkstyleTest, pmdMain, pmdTest, jacocoTestReport, jacocoTestCoverageVerification
+}
+
+// Проверка качества кода после тестов
+test.finalizedBy jacocoTestReport
+check.dependsOn jacocoTestCoverageVerification

@@ -16,26 +16,34 @@ spring:
           predicates:
             - Path=/api/liquidity/**
           filters:
-            - StripPrefix=1
-            - name: RequestRateLimiter
+            - name: RedisRateLimit
+            - name: Auth
+            - name: CircuitBreaker
               args:
-                redis-rate-limiter.replenishRate: 10
-                redis-rate-limiter.burstCapacity: 20
-            - name: AuthFilter
+                name: liquidity-service
+            - AddRequestHeader=X-API-Version, 1.0
         - id: transaction-service
           uri: lb://transaction-service
           predicates:
             - Path=/api/transactions/**
           filters:
-            - StripPrefix=1
-            - name: AuthFilter
+            - name: RedisRateLimit
+            - name: Auth
+            - name: CircuitBreaker
+              args:
+                name: liquidity-service
+            - AddRequestHeader=X-API-Version, 1.0
         - id: risk-service
           uri: lb://risk-service
           predicates:
             - Path=/api/risk/**
           filters:
-            - StripPrefix=1
-            - name: AuthFilter
+            - name: RedisRateLimit
+            - name: Auth
+            - name: CircuitBreaker
+              args:
+                name: liquidity-service
+            - AddRequestHeader=X-API-Version, 1.0
     config:
       import: optional:configserver:http://localhost:8888
 
@@ -61,6 +69,40 @@ management:
     distribution:
       percentiles-histogram:
         http.server.requests: true
+
+# JWT Configuration
+jwt:
+  secret: ${JWT_SECRET:defaultSecretKeyForDevelopmentOnlyChangeInProduction12345678901234567890}
+  expiration: ${JWT_EXPIRATION:3600000} # 1 hour in milliseconds
+
+  # Redis Configuration for distributed rate limiting
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      timeout: 2000ms
+
+# Resilience4j Circuit Breaker Configuration
+resilience4j:
+  circuitbreaker:
+    configs:
+      default:
+        registerHealthIndicator: true
+        slidingWindowSize: 10
+        minimumNumberOfCalls: 5
+        permittedNumberOfCallsInHalfOpenState: 3
+        automaticTransitionFromOpenToHalfOpenEnabled: true
+        waitDurationInOpenState: 10s
+        failureRateThreshold: 50
+        eventConsumerBufferSize: 10
+    instances:
+      liquidity-service:
+        baseConfig: default
+      transaction-service:
+        baseConfig: default
+      risk-service:
+        baseConfig: default
 
 logging:
   level:

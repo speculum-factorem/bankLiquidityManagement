@@ -7,13 +7,8 @@ spring:
   cloud:
     config:
       server:
-        git:
-          uri: https://github.com/your-org/bank-config-repo
-          default-label: main
-          clone-on-start: true
-          force-pull: true
-          timeout: 10
-          basedir: ./config-repo
+        native:
+          search-locations: classpath:/config
   profiles:
     active: native
 
@@ -74,6 +69,8 @@ spring:
           username: ${CONFIG_SERVER_GIT_USERNAME:}
           password: ${CONFIG_SERVER_GIT_PASSWORD:}
           default-label: ${CONFIG_SERVER_GIT_LABEL:main}
+          clone-on-start: false
+          skip-ssl-validation: ${CONFIG_SERVER_SKIP_SSL_VALIDATION:false}
 
 ---
 spring:

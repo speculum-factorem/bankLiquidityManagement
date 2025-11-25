@@ -6,6 +6,11 @@ import com.bank.transaction.dto.TransactionResponse;
 import com.bank.transaction.dto.TransactionStatusUpdate;
 import com.bank.transaction.model.Transaction;
 import com.bank.transaction.service.TransactionService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -19,10 +24,18 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/transactions")
 @RequiredArgsConstructor
+@Tag(name = "Transaction Management", description = "API для управления банковскими транзакциями")
 public class TransactionController {
 
     private final TransactionService transactionService;
 
+    @Operation(summary = "Создать транзакцию", 
+               description = "Создает новую банковскую транзакцию")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Транзакция успешно создана"),
+        @ApiResponse(responseCode = "400", description = "Неверные входные данные"),
+        @ApiResponse(responseCode = "500", description = "Внутренняя ошибка сервера")
+    })
     @PostMapping
     public ResponseEntity<ApiResponse<TransactionResponse>> createTransaction(
             @Valid @RequestBody TransactionRequest request) {
@@ -44,6 +57,8 @@ public class TransactionController {
         }
     }
 
+    @Operation(summary = "Получить все транзакции", 
+               description = "Возвращает список всех транзакций")
     @GetMapping
     public ResponseEntity<ApiResponse<List<TransactionResponse>>> getAllTransactions() {
         log.debug("Fetching all transactions");
@@ -55,8 +70,11 @@ public class TransactionController {
         return ResponseEntity.ok(ApiResponse.success(transactions));
     }
 
+    @Operation(summary = "Получить транзакцию по ID", 
+               description = "Возвращает транзакцию по внутреннему идентификатору")
     @GetMapping("/{id}")
-    public ResponseEntity<ApiResponse<TransactionResponse>> getTransactionById(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<TransactionResponse>> getTransactionById(
+            @Parameter(description = "Внутренний ID транзакции") @PathVariable Long id) {
         log.debug("Fetching transaction by id: {}", id);
 
         return transactionService.getTransactionById(id)
@@ -134,9 +152,11 @@ public class TransactionController {
         return ResponseEntity.ok(ApiResponse.success(transactions));
     }
 
+    @Operation(summary = "Обновить статус транзакции", 
+               description = "Обновляет статус транзакции по внутреннему ID")
     @PutMapping("/{id}/status")
     public ResponseEntity<ApiResponse<TransactionResponse>> updateTransactionStatus(
-            @PathVariable Long id,
+            @Parameter(description = "Внутренний ID транзакции") @PathVariable Long id,
             @Valid @RequestBody TransactionStatusUpdate statusUpdate) {
 
         log.info("Updating transaction status for id: {} to {}", id, statusUpdate.getStatus());

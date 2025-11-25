@@ -5,6 +5,11 @@ import com.bank.risk.dto.RiskAssessmentRequest;
 import com.bank.risk.dto.RiskAssessmentResponse;
 import com.bank.risk.dto.RiskSummaryResponse;
 import com.bank.risk.service.RiskAssessmentService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -17,10 +22,18 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/risk/assessments")
 @RequiredArgsConstructor
+@Tag(name = "Risk Assessment", description = "API для оценки и управления рисками банка")
 public class RiskAssessmentController {
 
     private final RiskAssessmentService riskAssessmentService;
 
+    @Operation(summary = "Создать оценку риска", 
+               description = "Создает новую оценку риска для филиала и валюты")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Оценка риска успешно создана"),
+        @ApiResponse(responseCode = "400", description = "Неверные входные данные"),
+        @ApiResponse(responseCode = "500", description = "Внутренняя ошибка сервера")
+    })
     @PostMapping
     public ResponseEntity<ApiResponse<RiskAssessmentResponse>> createAssessment(
             @Valid @RequestBody RiskAssessmentRequest request) {
@@ -41,6 +54,8 @@ public class RiskAssessmentController {
         }
     }
 
+    @Operation(summary = "Получить все оценки риска", 
+               description = "Возвращает все оценки риска по всем филиалам")
     @GetMapping
     public ResponseEntity<ApiResponse<List<RiskAssessmentResponse>>> getAllAssessments() {
         log.debug("Fetching all risk assessments");
@@ -52,9 +67,11 @@ public class RiskAssessmentController {
         return ResponseEntity.ok(ApiResponse.success(assessments));
     }
 
+    @Operation(summary = "Получить оценки риска по филиалу", 
+               description = "Возвращает все оценки риска для указанного филиала")
     @GetMapping("/branch/{branchCode}")
     public ResponseEntity<ApiResponse<List<RiskAssessmentResponse>>> getAssessmentsByBranch(
-            @PathVariable String branchCode) {
+            @Parameter(description = "Код филиала") @PathVariable String branchCode) {
 
         log.debug("Fetching risk assessments for branch: {}", branchCode);
 
@@ -65,10 +82,12 @@ public class RiskAssessmentController {
         return ResponseEntity.ok(ApiResponse.success(assessments));
     }
 
+    @Operation(summary = "Получить последнюю оценку риска", 
+               description = "Возвращает последнюю оценку риска для филиала и валюты")
     @GetMapping("/branch/{branchCode}/currency/{currency}/latest")
     public ResponseEntity<ApiResponse<RiskAssessmentResponse>> getLatestAssessment(
-            @PathVariable String branchCode,
-            @PathVariable String currency) {
+            @Parameter(description = "Код филиала") @PathVariable String branchCode,
+            @Parameter(description = "Валюта") @PathVariable String currency) {
 
         log.debug("Fetching latest risk assessment for branch: {}, currency: {}", branchCode, currency);
 
@@ -80,6 +99,8 @@ public class RiskAssessmentController {
                 .orElse(ResponseEntity.ok(ApiResponse.error("No risk assessment found")));
     }
 
+    @Operation(summary = "Получить оценки высокого риска", 
+               description = "Возвращает все оценки с высоким уровнем риска")
     @GetMapping("/high-risk")
     public ResponseEntity<ApiResponse<List<RiskAssessmentResponse>>> getHighRiskAssessments() {
         log.debug("Fetching high risk assessments");
@@ -91,6 +112,8 @@ public class RiskAssessmentController {
         return ResponseEntity.ok(ApiResponse.success(assessments));
     }
 
+    @Operation(summary = "Получить критические оценки риска", 
+               description = "Возвращает все оценки с критическим уровнем риска")
     @GetMapping("/critical-risk")
     public ResponseEntity<ApiResponse<List<RiskAssessmentResponse>>> getCriticalRiskAssessments() {
         log.debug("Fetching critical risk assessments");
@@ -102,10 +125,12 @@ public class RiskAssessmentController {
         return ResponseEntity.ok(ApiResponse.success(assessments));
     }
 
+    @Operation(summary = "Получить сводку по рискам", 
+               description = "Возвращает сводную информацию по рискам для филиала и валюты")
     @GetMapping("/summary/branch/{branchCode}/currency/{currency}")
     public ResponseEntity<ApiResponse<RiskSummaryResponse>> getRiskSummary(
-            @PathVariable String branchCode,
-            @PathVariable String currency) {
+            @Parameter(description = "Код филиала") @PathVariable String branchCode,
+            @Parameter(description = "Валюта") @PathVariable String currency) {
 
         log.debug("Generating risk summary for branch: {}, currency: {}", branchCode, currency);
 

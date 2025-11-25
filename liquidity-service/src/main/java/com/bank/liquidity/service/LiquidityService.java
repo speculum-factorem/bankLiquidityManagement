@@ -30,23 +30,26 @@ public class LiquidityService {
     private final LiquidityAlertRepository alertRepository;
     private final LiquidityMetricsService metricsService;
 
+    @org.springframework.cache.annotation.CacheEvict(value = {"liquidityPositions", "branchPositions"}, allEntries = true)
     public LiquidityPositionResponse createPosition(LiquidityPositionRequest request) {
         log.info("Creating liquidity position for branch: {}, currency: {}",
                 request.getBranchCode(), request.getCurrency());
 
         String correlationId = MDC.get("correlationId");
 
-        // Check if position already exists for this branch and currency
+        // Проверка существования позиции для данного филиала и валюты
         Optional<LiquidityPosition> existingPosition =
                 positionRepository.findByBranchCodeAndCurrency(request.getBranchCode(), request.getCurrency());
 
         LiquidityPosition position;
         if (existingPosition.isPresent()) {
+            // Обновление существующей позиции ликвидности
             position = existingPosition.get();
             position.setAvailableCash(request.getAvailableCash());
             position.setRequiredReserves(request.getRequiredReserves());
             log.debug("Updated existing liquidity position: {}", position.getId());
         } else {
+            // Создание новой позиции ликвидности
             position = LiquidityPosition.builder()
                     .currency(request.getCurrency())
                     .availableCash(request.getAvailableCash())
@@ -58,10 +61,10 @@ public class LiquidityService {
 
         LiquidityPosition savedPosition = positionRepository.save(position);
 
-        // Check for alerts asynchronously
+        // Асинхронная проверка на наличие алертов
         checkForAlerts(savedPosition);
 
-        // Record metrics
+        // Запись метрик
         metricsService.recordLiquidityPositionCreation(savedPosition);
 
         log.info("Liquidity position {} created/updated successfully for branch: {}",
@@ -70,6 +73,7 @@ public class LiquidityService {
         return mapToResponse(savedPosition);
     }
 
+    @org.springframework.cache.annotation.Cacheable(value = "liquidityPositions", key = "'all'")
     @Transactional(readOnly = true)
     public List<LiquidityPositionResponse> getAllPositions() {
         log.debug("Fetching all liquidity positions");
@@ -78,6 +82,7 @@ public class LiquidityService {
                 .collect(Collectors.toList());
     }
 
+    @org.springframework.cache.annotation.Cacheable(value = "branchPositions", key = "#branchCode")
     @Transactional(readOnly = true)
     public List<LiquidityPositionResponse> getPositionsByBranch(String branchCode) {
         log.debug("Fetching liquidity positions for branch: {}", branchCode);
@@ -114,17 +119,17 @@ public class LiquidityService {
         log.debug("Checking alerts for position: {} (branch: {}, currency: {})",
                 position.getId(), position.getBranchCode(), position.getCurrency());
 
-        // Check for deficit
+        // Проверка на дефицит ликвидности
         if (position.getNetLiquidity().compareTo(BigDecimal.ZERO) < 0) {
             createDeficitAlert(position);
         }
 
-        // Check for low liquidity ratio (below 1.0)
+        // Проверка на низкий коэффициент ликвидности (ниже 1.0)
         if (position.getLiquidityRatio().compareTo(BigDecimal.ONE) < 0) {
             createLowLiquidityAlert(position);
         }
 
-        // Check for critical liquidity (below 0.5)
+        // Проверка на критическую ликвидность (ниже 0.5)
         if (position.getLiquidityRatio().compareTo(new BigDecimal("0.5")) < 0) {
             createCriticalLiquidityAlert(position);
         }

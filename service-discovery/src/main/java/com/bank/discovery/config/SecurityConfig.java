@@ -29,7 +29,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/actuator/health", "/actuator/info").permitAll()
                         .requestMatchers("/actuator/**").hasRole("ADMIN")
-                        .requestMatchers("/eureka/**").hasRole("USER")
+                        .requestMatchers("/eureka/**").permitAll() // Allow Eureka endpoints for service registration
                         .anyRequest().authenticated()
                 )
                 .httpBasic(Customizer.withDefaults());

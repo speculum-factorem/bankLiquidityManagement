@@ -1,5 +1,6 @@
 package com.bank.liquidity.dto;
 
+import com.bank.liquidity.validation.ValidCurrency;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -19,6 +20,7 @@ public class LiquidityPositionRequest {
 
     @NotBlank(message = "Currency is required")
     @Size(min = 3, max = 3, message = "Currency must be 3 characters")
+    @ValidCurrency
     private String currency;
 
     @NotNull(message = "Available cash is required")

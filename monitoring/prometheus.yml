@@ -1,0 +1,90 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    cluster: 'bank-liquidity-platform'
+    environment: 'production'
+
+scrape_configs:
+  # Prometheus itself
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+        labels:
+          service: 'prometheus'
+
+  # Config Server
+  - job_name: 'config-server'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['config-server:8888']
+        labels:
+          service: 'config-server'
+          application: 'config-server'
+    scrape_interval: 30s
+
+  # Service Discovery (Eureka)
+  - job_name: 'service-discovery'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['service-discovery:8761']
+        labels:
+          service: 'service-discovery'
+          application: 'service-discovery'
+    scrape_interval: 30s
+
+  # API Gateway
+  - job_name: 'api-gateway'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['api-gateway:8080']
+        labels:
+          service: 'api-gateway'
+          application: 'api-gateway'
+    scrape_interval: 15s
+
+  # Liquidity Service
+  - job_name: 'liquidity-service'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['liquidity-service:8081']
+        labels:
+          service: 'liquidity-service'
+          application: 'liquidity-service'
+    scrape_interval: 15s
+
+  # Transaction Service
+  - job_name: 'transaction-service'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['transaction-service:8082']
+        labels:
+          service: 'transaction-service'
+          application: 'transaction-service'
+    scrape_interval: 15s
+
+  # Risk Service
+  - job_name: 'risk-service'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['risk-service:8083']
+        labels:
+          service: 'risk-service'
+          application: 'risk-service'
+    scrape_interval: 15s
+
+  # PostgreSQL Exporter (optional - if you add postgres_exporter container)
+  # - job_name: 'postgres'
+  #   static_configs:
+  #     - targets: ['postgres-exporter:9187']
+  #       labels:
+  #         service: 'postgres'
+  #         database: 'bank_liquidity'
+
+  # Kafka Exporter (optional - if you add kafka_exporter container)
+  # - job_name: 'kafka'
+  #   static_configs:
+  #     - targets: ['kafka-exporter:9308']
+  #       labels:
+  #         service: 'kafka'
+

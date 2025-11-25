@@ -39,13 +39,13 @@ public class RiskAssessmentService {
 
         String correlationId = MDC.get("correlationId");
 
-        // Calculate overall risk score using weighted average
+        // Расчет общего балла риска с использованием взвешенного среднего
         BigDecimal overallRiskScore = calculateWeightedRiskScore(request);
 
-        // Build risk factors description
+        // Построение описания факторов риска
         String riskFactors = buildRiskFactorsDescription(request);
 
-        // Generate recommendations
+        // Генерация рекомендаций
         String recommendations = generateRecommendations(overallRiskScore, request);
 
         RiskAssessment assessment = RiskAssessment.builder()
@@ -62,10 +62,10 @@ public class RiskAssessmentService {
 
         RiskAssessment savedAssessment = assessmentRepository.save(assessment);
 
-        // Check for risk alerts
+        // Проверка на наличие алертов риска
         checkForRiskAlerts(savedAssessment);
 
-        // Record metrics
+        // Запись метрик
         metricsService.recordRiskAssessment(savedAssessment);
 
         log.info("Risk assessment created successfully for branch: {}, currency: {}, score: {}",
@@ -129,19 +129,19 @@ public class RiskAssessmentService {
                     .build();
         }
 
-        // Calculate average risk score
+        // Расчет среднего балла риска
         BigDecimal averageScore = assessments.stream()
                 .map(RiskAssessment::getRiskScore)
                 .reduce(BigDecimal.ZERO, BigDecimal::add)
                 .divide(BigDecimal.valueOf(assessments.size()), 2, RoundingMode.HALF_UP);
 
-        // Get latest assessment
+        // Получение последней оценки
         RiskAssessment latest = assessments.get(0);
 
-        // Calculate risk trend (compare with previous assessment if available)
+        // Расчет тренда риска (сравнение с предыдущей оценкой, если доступна)
         BigDecimal riskTrend = calculateRiskTrend(assessments);
 
-        // Calculate risk level distribution
+        // Расчет распределения уровней риска
         Map<RiskAssessment.RiskLevel, Long> distribution = assessments.stream()
                 .collect(Collectors.groupingBy(RiskAssessment::getRiskLevel, Collectors.counting()));
 
@@ -208,7 +208,7 @@ public class RiskAssessmentService {
             recommendations.append("Continue periodic risk reviews. ");
         }
 
-        // Specific recommendations based on risk factors
+        // Специфические рекомендации на основе факторов риска
         if (request.getLiquidityRisk().compareTo(new BigDecimal("70")) > 0) {
             recommendations.append("Focus on liquidity management and reserve adequacy. ");
         }
@@ -219,12 +219,13 @@ public class RiskAssessmentService {
         return recommendations.toString();
     }
 
+    // Расчет тренда риска
     private BigDecimal calculateRiskTrend(List<RiskAssessment> assessments) {
         if (assessments.size() < 2) {
             return BigDecimal.ZERO;
         }
 
-        // Compare latest with previous assessment
+        // Сравнение последней оценки с предыдущей
         RiskAssessment latest = assessments.get(0);
         RiskAssessment previous = assessments.get(1);
 
@@ -241,18 +242,19 @@ public class RiskAssessmentService {
         );
     }
 
+    // Проверка оценки риска на наличие алертов
     private void checkForRiskAlerts(RiskAssessment assessment) {
-        // Check for critical risk
+        // Проверка на критический риск
         if (assessment.getRiskLevel() == RiskAssessment.RiskLevel.CRITICAL) {
             createCriticalRiskAlert(assessment);
         }
 
-        // Check for high risk threshold breach
+        // Проверка на превышение порога высокого риска
         if (assessment.getRiskScore().compareTo(riskConfig.getThresholds().getHighRiskMax()) >= 0) {
             createHighRiskAlert(assessment);
         }
 
-        // Check for significant risk increase compared to previous assessment
+        // Проверка на значительное увеличение риска по сравнению с предыдущей оценкой
         checkForRiskIncreaseAlert(assessment);
     }
 

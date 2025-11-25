@@ -36,11 +36,19 @@ dependencies {
 
     // Database
     implementation 'org.postgresql:postgresql'
+    implementation 'org.flywaydb:flyway-core'
+    implementation 'org.flywaydb:flyway-database-postgresql'
     runtimeOnly 'com.h2database:h2'
 
     // Monitoring & Metrics
     implementation 'io.micrometer:micrometer-registry-prometheus'
     implementation 'net.logstash.logback:logstash-logback-encoder:7.4'
+    
+    // Caching
+    implementation 'com.github.ben-manes.caffeine:caffeine'
+    
+    // API Documentation
+    implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.3.0'
 
     // Lombok
     compileOnly 'org.projectlombok:lombok'

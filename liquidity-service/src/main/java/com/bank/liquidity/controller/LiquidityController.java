@@ -4,6 +4,11 @@ import com.bank.liquidity.dto.ApiResponse;
 import com.bank.liquidity.dto.LiquidityPositionRequest;
 import com.bank.liquidity.dto.LiquidityPositionResponse;
 import com.bank.liquidity.service.LiquidityService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -17,10 +22,18 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/liquidity")
 @RequiredArgsConstructor
+@Tag(name = "Liquidity Management", description = "API for managing bank liquidity positions")
 public class LiquidityController {
 
     private final LiquidityService liquidityService;
 
+    @Operation(summary = "Создать или обновить позицию ликвидности", 
+               description = "Создает новую позицию ликвидности или обновляет существующую для филиала и валюты")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Позиция успешно создана/обновлена"),
+        @ApiResponse(responseCode = "400", description = "Неверные входные данные"),
+        @ApiResponse(responseCode = "500", description = "Внутренняя ошибка сервера")
+    })
     @PostMapping("/positions")
     public ResponseEntity<ApiResponse<LiquidityPositionResponse>> createPosition(
             @Valid @RequestBody LiquidityPositionRequest request) {
@@ -41,6 +54,8 @@ public class LiquidityController {
         }
     }
 
+    @Operation(summary = "Получить все позиции ликвидности", 
+               description = "Возвращает все позиции ликвидности по всем филиалам")
     @GetMapping("/positions")
     public ResponseEntity<ApiResponse<List<LiquidityPositionResponse>>> getAllPositions() {
         log.debug("Fetching all liquidity positions");

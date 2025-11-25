@@ -6,9 +6,9 @@ services:
     image: postgres:15
     container_name: bank-postgres
     environment:
-      POSTGRES_DB: bank_liquidity
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: password
+      POSTGRES_DB: ${POSTGRES_DB:-bank_liquidity}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
     ports:
       - "5432:5432"
     volumes:
@@ -47,20 +47,38 @@ services:
     environment:
       KAFKA_BROKER_ID: 1
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:9093
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,PLAINTEXT_HOST://0.0.0.0:9093
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
     ports:
       - "9092:9092"
+      - "9093:9093"
     volumes:
       - kafka_data:/var/lib/kafka/data
     networks:
       - bank-network
     healthcheck:
       test: ["CMD-SHELL", "kafka-topics --bootstrap-server localhost:9092 --list"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: bank-redis
+    ports:
+      - "6379:6379"
+    command: redis-server --requirepass ${REDIS_PASSWORD:-}
+    volumes:
+      - redis_data:/data
+    networks:
+      - bank-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -91,8 +109,8 @@ services:
     image: grafana/grafana:latest
     container_name: bank-grafana
     environment:
-      - GF_SECURITY_ADMIN_USER=admin
-      - GF_SECURITY_ADMIN_PASSWORD=admin123
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_USER:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin123}
     ports:
       - "3000:3000"
     volumes:
@@ -107,8 +125,8 @@ services:
   # Application Services
   config-server:
     build:
-      context: ./config-server
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: config-server/Dockerfile
     container_name: bank-config-server
     environment:
       - SPRING_PROFILES_ACTIVE=docker
@@ -126,8 +144,8 @@ services:
 
   service-discovery:
     build:
-      context: ./service-discovery
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: service-discovery/Dockerfile
     container_name: bank-service-discovery
     environment:
       - SPRING_PROFILES_ACTIVE=docker
@@ -135,9 +153,6 @@ services:
       - "8761:8761"
     networks:
       - bank-network
-    depends_on:
-      config-server:
-        condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8761/actuator/health"]
       interval: 30s
@@ -147,13 +162,13 @@ services:
 
   api-gateway:
     build:
-      context: ./api-gateway
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: api-gateway/Dockerfile
     container_name: bank-api-gateway
     environment:
       - SPRING_PROFILES_ACTIVE=docker
     ports:
-      - "8080:8080"
+      - "8084:8080"
     networks:
       - bank-network
     depends_on:
@@ -168,8 +183,8 @@ services:
 
   liquidity-service:
     build:
-      context: ./liquidity-service
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: liquidity-service/Dockerfile
     container_name: bank-liquidity-service
     environment:
       - SPRING_PROFILES_ACTIVE=docker
@@ -191,8 +206,8 @@ services:
 
   transaction-service:
     build:
-      context: ./transaction-service
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: transaction-service/Dockerfile
     container_name: bank-transaction-service
     environment:
       - SPRING_PROFILES_ACTIVE=docker
@@ -216,8 +231,8 @@ services:
 
   risk-service:
     build:
-      context: ./risk-service
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: risk-service/Dockerfile
     container_name: bank-risk-service
     environment:
       - SPRING_PROFILES_ACTIVE=docker
@@ -241,6 +256,8 @@ volumes:
   postgres_data:
     driver: local
   kafka_data:
+    driver: local
+  redis_data:
     driver: local
   prometheus_data:
     driver: local

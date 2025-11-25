@@ -19,11 +19,11 @@ import java.util.concurrent.ConcurrentHashMap;
 
 @Slf4j
 @Component
-public class RateLimitFilter extends AbstractGatewayFilterFactory<RateLimitFilter.Config> {
+public class RateLimitGatewayFilterFactory extends AbstractGatewayFilterFactory<RateLimitGatewayFilterFactory.Config> {
 
     private final Map<String, Bucket> buckets = new ConcurrentHashMap<>();
 
-    public RateLimitFilter() {
+    public RateLimitGatewayFilterFactory() {
         super(Config.class);
     }
 
@@ -46,8 +46,9 @@ public class RateLimitFilter extends AbstractGatewayFilterFactory<RateLimitFilte
         };
     }
 
+    // Создание нового bucket для rate limiting
     private Bucket createNewBucket() {
-        Refill refill = Refill.intervally(100, Duration.ofMinutes(1)); // 100 requests per minute
+        Refill refill = Refill.intervally(100, Duration.ofMinutes(1)); // 100 запросов в минуту
         Bandwidth limit = Bandwidth.classic(100, refill);
         return Bucket4j.builder().addLimit(limit).build();
     }
@@ -61,7 +62,9 @@ public class RateLimitFilter extends AbstractGatewayFilterFactory<RateLimitFilte
                 request.getRemoteAddress().getAddress().getHostAddress() : "unknown";
     }
 
+    // Класс конфигурации фильтра ограничения скорости
     public static class Config {
-        // Конфигурация лимитов
+        // Конфигурация лимитов запросов
+        // Можно добавить параметры для настройки лимитов через конфигурацию
     }
 }

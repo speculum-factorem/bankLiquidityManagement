@@ -1,15 +1,13 @@
 server:
   port: 8082
-  servlet:
-    context-path: /transaction-service
 
 spring:
   application:
     name: transaction-service
   datasource:
-    url: jdbc:postgresql://localhost:5432/bank_liquidity
-    username: postgres
-    password: password
+    url: jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5432}/${POSTGRES_DB:bank_liquidity}
+    username: ${POSTGRES_USER:postgres}
+    password: ${POSTGRES_PASSWORD:password}
     hikari:
       maximum-pool-size: 10
       minimum-idle: 2
@@ -30,12 +28,23 @@ spring:
         order_updates: true
     open-in-view: false
   kafka:
-    bootstrap-servers: localhost:9092
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
       properties:
         spring.json.add.type.headers: false
+      # Retry configuration
+      retries: 3
+      max-in-flight-requests-per-connection: 5
+      enable-idempotence: true
+      acks: all
+      # Error handling
+      properties:
+        retry.backoff.ms: 1000
+        max.block.ms: 5000
+        delivery.timeout.ms: 120000
+        request.timeout.ms: 30000
     consumer:
       group-id: transaction-service-group
       auto-offset-reset: earliest
@@ -128,9 +137,9 @@ spring:
     activate:
       on-profile: docker
   datasource:
-    url: jdbc:postgresql://postgres:5432/bank_liquidity
-    username: postgres
-    password: password
+    url: jdbc:postgresql://${POSTGRES_HOST:postgres}:${POSTGRES_PORT:5432}/${POSTGRES_DB:bank_liquidity}
+    username: ${POSTGRES_USER:postgres}
+    password: ${POSTGRES_PASSWORD:password}
   kafka:
     bootstrap-servers: kafka:9092
 

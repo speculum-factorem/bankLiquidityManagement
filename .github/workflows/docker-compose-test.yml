@@ -1,0 +1,61 @@
+name: Docker Compose Integration Tests
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  workflow_dispatch:
+
+jobs:
+  integration-test:
+    name: Integration Tests with Docker Compose
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Compose
+        run: |
+          docker compose version
+
+      - name: Start services
+        run: |
+          docker compose up -d
+          echo "Ожидание запуска сервисов..."
+          sleep 30
+
+      - name: Health check
+        run: |
+          echo "Проверка здоровья сервисов..."
+          # Проверка API Gateway
+          curl -f http://localhost:8080/actuator/health || exit 1
+          # Проверка Config Server
+          curl -f http://localhost:8888/actuator/health || exit 1
+          # Проверка Service Discovery
+          curl -f http://localhost:8761/actuator/health || exit 1
+          # Проверка Liquidity Service
+          curl -f http://localhost:8081/actuator/health || exit 1
+          # Проверка Transaction Service
+          curl -f http://localhost:8082/actuator/health || exit 1
+          # Проверка Risk Service
+          curl -f http://localhost:8083/actuator/health || exit 1
+
+      - name: Run integration tests
+        run: |
+          echo "Запуск интеграционных тестов..."
+          # Здесь можно добавить реальные интеграционные тесты
+          # Например, используя Testcontainers или прямые HTTP запросы
+
+      - name: View logs
+        if: failure()
+        run: |
+          echo "Логи сервисов:"
+          docker compose logs --tail=100
+
+      - name: Stop services
+        if: always()
+        run: |
+          docker compose down -v
+

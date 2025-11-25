@@ -42,6 +42,7 @@ gradle.ext {
 }
 
 // Print project information
+rootProject.version = '1.0.0'
 println """
 ===========================================
 Bank Liquidity Management System

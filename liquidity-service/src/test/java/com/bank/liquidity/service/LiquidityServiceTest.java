@@ -3,6 +3,7 @@ package com.bank.liquidity.service;
 import com.bank.liquidity.dto.LiquidityPositionRequest;
 import com.bank.liquidity.dto.LiquidityPositionResponse;
 import com.bank.liquidity.model.LiquidityPosition;
+import com.bank.liquidity.repository.LiquidityAlertRepository;
 import com.bank.liquidity.repository.LiquidityPositionRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

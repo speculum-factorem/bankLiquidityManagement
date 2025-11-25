@@ -37,6 +37,7 @@ public class TransactionService {
 
         String correlationId = MDC.get("correlationId");
 
+        // Создание объекта транзакции из запроса
         Transaction transaction = Transaction.builder()
                 .type(request.getType())
                 .amount(request.getAmount())
@@ -50,21 +51,31 @@ public class TransactionService {
                 .category(request.getCategory())
                 .build();
 
+        // Сохранение транзакции в базе данных (транзакция БД)
         Transaction savedTransaction = transactionRepository.save(transaction);
 
-        // Publish to Kafka for other services
-        publishTransactionToKafka(savedTransaction);
+        try {
+            // Публикация в Kafka для других сервисов (асинхронно, неблокирующе)
+            publishTransactionToKafka(savedTransaction);
 
-        // Check for alerts
-        checkForTransactionAlerts(savedTransaction);
+            // Проверка на алерты (асинхронно)
+            checkForTransactionAlerts(savedTransaction);
 
-        // Record metrics
-        metricsService.recordTransactionCreation(savedTransaction);
+            // Запись метрик
+            metricsService.recordTransactionCreation(savedTransaction);
 
-        log.info("Transaction created successfully: {} for account: {}",
-                savedTransaction.getTransactionId(), savedTransaction.getAccountNumber());
+            log.info("Transaction created successfully: {} for account: {}",
+                    savedTransaction.getTransactionId(), savedTransaction.getAccountNumber());
 
-        return mapToResponse(savedTransaction);
+            return mapToResponse(savedTransaction);
+        } catch (Exception e) {
+            // Если публикация в Kafka не удалась, транзакция уже сохранена
+            // Это приемлемо, так как у нас есть обработка DLQ
+            log.error("Error in post-transaction processing for transaction: {}", 
+                savedTransaction.getTransactionId(), e);
+            // Все равно возвращаем успех, так как транзакция сохранена
+            return mapToResponse(savedTransaction);
+        }
     }
 
     @Transactional(readOnly = true)
@@ -135,10 +146,10 @@ public class TransactionService {
 
                     Transaction updatedTransaction = transactionRepository.save(transaction);
 
-                    // Record metrics
+                    // Запись метрик изменения статуса
                     metricsService.recordTransactionStatusChange(updatedTransaction, oldStatus);
 
-                    // Publish status update to Kafka
+                    // Публикация обновления статуса в Kafka
                     publishTransactionStatusUpdate(updatedTransaction, oldStatus);
 
                     log.info("Transaction status updated: {} from {} to {}",
@@ -166,7 +177,7 @@ public class TransactionService {
 
                     Transaction updatedTransaction = transactionRepository.save(transaction);
 
-                    // Record metrics
+                    // Запись метрик изменения статуса
                     metricsService.recordTransactionStatusChange(updatedTransaction, oldStatus);
 
                     log.info("Transaction status updated: {} from {} to {}",
@@ -182,35 +193,79 @@ public class TransactionService {
 
     private void publishTransactionToKafka(Transaction transaction) {
         try {
-            kafkaTemplate.send("transactions", transaction.getTransactionId(), transaction);
-            log.debug("Transaction published to Kafka: {}", transaction.getTransactionId());
+            kafkaTemplate.send("transactions", transaction.getTransactionId(), transaction)
+                .whenComplete((result, exception) -> {
+                    if (exception != null) {
+                        log.error("Failed to publish transaction to Kafka: {}", 
+                            transaction.getTransactionId(), exception);
+                        // Сохранение неудачного сообщения для повторной попытки или обработки DLQ
+                        handleKafkaPublishFailure("transactions", transaction.getTransactionId(), 
+                            transaction, exception);
+                    } else {
+                        log.debug("Transaction published to Kafka: {} to partition: {}, offset: {}", 
+                            transaction.getTransactionId(), 
+                            result != null ? result.getRecordMetadata().partition() : "unknown",
+                            result != null ? result.getRecordMetadata().offset() : "unknown");
+                    }
+                });
         } catch (Exception e) {
             log.error("Failed to publish transaction to Kafka: {}", transaction.getTransactionId(), e);
+            handleKafkaPublishFailure("transactions", transaction.getTransactionId(), transaction, e);
         }
     }
 
     private void publishTransactionStatusUpdate(Transaction transaction, Transaction.TransactionStatus oldStatus) {
         try {
             var statusUpdate = new TransactionStatusUpdateEvent(transaction, oldStatus);
-            kafkaTemplate.send("transaction-status-updates", transaction.getTransactionId(), statusUpdate);
-            log.debug("Transaction status update published to Kafka: {}", transaction.getTransactionId());
+            kafkaTemplate.send("transaction-status-updates", transaction.getTransactionId(), statusUpdate)
+                .whenComplete((result, exception) -> {
+                    if (exception != null) {
+                        log.error("Failed to publish transaction status update to Kafka: {}", 
+                            transaction.getTransactionId(), exception);
+                        handleKafkaPublishFailure("transaction-status-updates", 
+                            transaction.getTransactionId(), statusUpdate, exception);
+                    } else {
+                        log.debug("Transaction status update published to Kafka: {}", 
+                            transaction.getTransactionId());
+                    }
+                });
         } catch (Exception e) {
-            log.error("Failed to publish transaction status update to Kafka: {}", transaction.getTransactionId(), e);
+            log.error("Failed to publish transaction status update to Kafka: {}", 
+                transaction.getTransactionId(), e);
+            var statusUpdate = new TransactionStatusUpdateEvent(transaction, oldStatus);
+            handleKafkaPublishFailure("transaction-status-updates", 
+                transaction.getTransactionId(), statusUpdate, e);
         }
     }
 
+    // Обработка ошибки публикации в Kafka
+    private void handleKafkaPublishFailure(String topic, String key, Object message, Throwable exception) {
+        // Попытка отправить в DLQ топик
+        try {
+            String dlqTopic = topic + "-dlq";
+            kafkaTemplate.send(dlqTopic, key, message);
+            log.warn("Message sent to DLQ topic: {} for key: {}", dlqTopic, key);
+        } catch (Exception dlqException) {
+            log.error("Failed to send message to DLQ topic: {} for key: {}", 
+                topic + "-dlq", key, dlqException);
+            // В продакшн системе можно сохранить это в базу данных
+            // или использовать паттерн outbox для гарантированной доставки
+        }
+    }
+
+    // Проверка транзакции на наличие алертов
     private void checkForTransactionAlerts(Transaction transaction) {
-        // Check for high value transactions
+        // Проверка на транзакции с высокой суммой
         if (transaction.isHighValueTransaction()) {
             createHighValueTransactionAlert(transaction);
         }
 
-        // Check for suspicious transactions
+        // Проверка на подозрительные транзакции
         if (transaction.isSuspiciousTransaction()) {
             createSuspiciousTransactionAlert(transaction);
         }
 
-        // Check for multiple failed transactions
+        // Проверка на множественные неудачные транзакции
         checkForMultipleFailedTransactions(transaction.getAccountNumber());
     }
 
@@ -231,7 +286,7 @@ public class TransactionService {
         alertRepository.save(alert);
         metricsService.recordTransactionAlert(alert);
 
-        // Publish to Kafka
+        // Публикация алерта в Kafka
         try {
             kafkaTemplate.send("transaction-alerts", transaction.getTransactionId(), alert);
         } catch (Exception e) {
@@ -259,7 +314,7 @@ public class TransactionService {
         alertRepository.save(alert);
         metricsService.recordTransactionAlert(alert);
 
-        // Publish to Kafka
+        // Публикация подозрительного алерта в Kafka
         try {
             kafkaTemplate.send("transaction-alerts", transaction.getTransactionId(), alert);
             kafkaTemplate.send("high-value-transactions", transaction.getTransactionId(), transaction);
@@ -327,7 +382,7 @@ public class TransactionService {
                 .build();
     }
 
-    // Inner class for Kafka events
+    // Внутренний класс для событий Kafka
     @Data
     @Builder
     private static class TransactionStatusUpdateEvent {

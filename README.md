@@ -80,7 +80,7 @@ Bank Liquidity Management Platform - это комплексная микрос�
 ┌─────────────────────────────────────────────────────────────────┐
 │                      Client Applications                        │
 │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐           │
-│  │ Web Browser  │  │ Mobile App   │   │ External API│           │
+│  │ Web Browser  │  │ Mobile App   │  │ External API │           │
 │  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘           │
 └─────────┼─────────────────┼─────────────────┼───────────────────┘
           │                 │                 │
@@ -585,7 +585,7 @@ Service → Kafka Producer → Kafka Topic → Kafka Consumer → External Servi
 1. **Клонирование репозитория:**
 
 ```bash
-git clone https://github.com/your-org/bank-liquidity-management.git
+git clone https://github.com/speculum-factorem/bankLiquidityManagement.git
 cd bank-liquidity-management
 ```
 
@@ -722,7 +722,7 @@ spring:
     config:
       server:
         git:
-          uri: ${CONFIG_SERVER_GIT_URI:https://github.com/your-org/bank-config-repo}
+          uri: ${CONFIG_SERVER_GIT_URI:https://github.com/speculum-factorem/bankLiquidityManagement.git}
           clone-on-start: true
 
 server:
